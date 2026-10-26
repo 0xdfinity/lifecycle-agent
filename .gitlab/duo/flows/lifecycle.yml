@@ -1,0 +1,44 @@
+# GitLab Duo Agent Platform custom flow (draft, flow registry v1 style).
+# Trigger: merge request created/approved, or mention of the flow service account.
+# Install: project > AI > Flows > New flow > paste this YAML, then enable it for the project.
+# Check the exact schema in the Duo flow builder before publishing: the platform validates it.
+version: "v1"
+environment: ambient
+components:
+  - name: "mr_reviewer"
+    type: AgentComponent
+    prompt_id: "mr_review_prompt"
+    inputs:
+      - from: "context:project_id"
+        as: "project_id"
+      - "context:goal"
+    toolset:
+      - "get_merge_request"
+      - "list_merge_request_diffs"
+      - "create_merge_request_note"
+  - name: "post_deploy_summary"
+    type: AgentComponent
+    prompt_id: "summary_prompt"
+    inputs:
+      - "context:goal"
+    toolset:
+      - "create_merge_request_note"
+prompts:
+  - prompt_id: "mr_review_prompt"
+    unit_primitives:
+      - duo_agent_platform
+    prompt_template:
+      system: |
+        You are the Life After Code reviewer. Read the merge request diff. Flag security issues
+        (secrets, tx.origin, unchecked external calls, eval), missing tests, and unclear code.
+        Post one concise review note. End with the line PASS or BLOCK.
+  - prompt_id: "summary_prompt"
+    unit_primitives:
+      - duo_agent_platform
+    prompt_template:
+      system: |
+        Summarize the pipeline result for the merge request in five short lines: review verdict,
+        deploy status, health status, next action. Do not invent results.
+routers: []
+flow:
+  entry_point: "mr_reviewer"

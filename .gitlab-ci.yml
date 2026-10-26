@@ -1,0 +1,79 @@
+# Life After Code pipeline: review -> build -> deploy -> monitor -> report.
+# Uses only the Python standard library, so it runs on a stock image with no install step.
+image: python:3.12-slim
+
+stages:
+  - review
+  - build
+  - deploy
+  - monitor
+  - report
+
+variables:
+  DEPLOY_URL: ""
+
+.agent_prep: &agent_prep
+  before_script:
+    - python --version
+
+review:
+  <<: *agent_prep
+  stage: review
+  script:
+    - git fetch --depth=50 origin "${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}" || true
+    - git diff "origin/${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}...HEAD" > mr.diff || git show HEAD > mr.diff
+    - python -m lifecycle_agent.review mr.diff > review.json || true
+    - cat review.json
+    - python -c "import json,sys; r=json.load(open('review.json')); print('score', r['score'], 'blocking', r['blocking'])"
+  artifacts:
+    paths: [review.json, mr.diff]
+    expire_in: 1 week
+
+build:
+  <<: *agent_prep
+  stage: build
+  needs: [review]
+  script:
+    - python -m unittest discover -s tests -v
+    - mkdir -p dist && tar -czf dist/app-${CI_COMMIT_SHORT_SHA}.tar.gz lifecycle_agent
+  artifacts:
+    paths: [dist/]
+    expire_in: 1 week
+
+deploy_staging:
+  <<: *agent_prep
+  stage: deploy
+  needs: [build, review]
+  environment:
+    name: staging
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - python -m lifecycle_agent.deploy review.json deploy-manifest.json staging
+    - cat deploy-manifest.json
+  artifacts:
+    paths: [deploy-manifest.json]
+    expire_in: 1 week
+
+monitor:
+  <<: *agent_prep
+  stage: monitor
+  needs: [deploy_staging]
+  script:
+    - python -m lifecycle_agent.monitor "${DEPLOY_URL}" > health.json || true
+    - cat health.json
+  artifacts:
+    paths: [health.json]
+    expire_in: 1 week
+
+report:
+  <<: *agent_prep
+  stage: report
+  needs: [review, deploy_staging, monitor]
+  script:
+    - python -m lifecycle_agent.report review.json deploy-manifest.json health.json lifecycle-report.md
+    - cat lifecycle-report.md
+  artifacts:
+    paths: [lifecycle-report.md]
+    expire_in: 1 week
