@@ -12,7 +12,7 @@ Path: A (start fresh). Built for the GitLab Transcend hackathon.
 4. Monitor: writes alert rules (5xx rate, p95 latency, health failing) and probes DEPLOY_URL when set.
 5. Report: writes lifecycle-report.md and posts it as a note on the merge request through the GitLab API.
 
-GitLab Duo Agent Platform: `.gitlab/duo/flows/lifecycle.yml` is a custom flow (flow registry v1 syntax) that adds an LLM reviewer and summary agent on top of the rule engine. It is triggered by mentioning or assigning the flow's service account on a merge request. See PUBLISH_STEPS.md for enabling it.
+GitLab Duo Agent Platform: `.gitlab/duo/flows/lifecycle.yml` is a custom flow (flow registry v1 syntax) that adds an LLM reviewer and summary agent on top of the rule engine. It is triggered by mentioning or assigning the flow's service account on a merge request.
 
 ## Run locally
 
