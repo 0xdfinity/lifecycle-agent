@@ -2,7 +2,7 @@
 
 An agent that takes a commit or merge request and runs the rest of the post-code lifecycle on GitLab: AI-assisted review, a quality gate, build, deploy, monitoring, and a report posted back to the MR.
 
-Path: A (start fresh). Built for the GitLab Transcend hackathon.
+Built for the GitLab Transcend hackathon; MIT licensed.
 
 ## What it does
 
